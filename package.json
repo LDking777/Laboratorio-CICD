@@ -1,0 +1,27 @@
+{
+  "name": "tiendita-cicd",
+  "version": "1.0.0",
+  "description": "Aplicación ligera de tiendita (e-commerce básico) para laboratorio de DevOps/CI/CD con Azure Pipelines",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "jest --runInBand"
+  },
+  "keywords": [
+    "tiendita",
+    "e-commerce",
+    "devops",
+    "azure-pipelines",
+    "express",
+    "nodejs"
+  ],
+  "author": "Laboratorio DevOps",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  }
+}
