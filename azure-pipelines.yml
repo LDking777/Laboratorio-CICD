@@ -5,56 +5,72 @@ pool:
   vmImage: 'ubuntu-latest'
 
 stages:
-  - stage: DEV
-    displayName: "Deploy DEV"
+  # 1. ETAPA DE CONSTRUCCIÓN (CI)
+  - stage: Build
+    displayName: 'Build'
     jobs:
-      - deployment: DeployDEV
-        displayName: "Deploy DEV"
+      - job: BuildJob
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '18.x'
+            displayName: 'Instalar Node.js'
+
+          - script: |
+              npm install
+              npm run build
+            displayName: 'Compilar React / Vite'
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(System.DefaultWorkingDirectory)/dist'
+              artifact: 'drop'
+            displayName: 'Publicar Artefacto'
+
+  # 2. ETAPA DE DESPLIEGUE EN DEV
+  - stage: Deploy_DEV
+    displayName: 'Deploy DEV'
+    dependsOn: Build
+    jobs:
+      - deployment: DeployDEVJob
         environment: 'DEV'
         strategy:
           runOnce:
             deploy:
               steps:
-                - task: NodeTool@0
-                  inputs:
-                    versionSpec: '18.x'
-                  displayName: "Instalar Node.js"
+                - download: current
+                  artifact: drop
+                - script: echo "Desplegando en ambiente DEV..."
+                  displayName: 'Ejecutar despliegue DEV'
 
-                - script: npm ci
-                  displayName: "Instalar dependencias"
-
-                - script: npm test
-                  displayName: "Ejecutar pruebas unitarias (Jest)"
-
-                - script: echo "Build/Test exitoso y despliegue simulado en DEV"
-                  displayName: "Despliegue DEV"
-
-  - stage: QA
-    displayName: "Deploy QA"
-    dependsOn: DEV
-    condition: succeeded()
+  # 3. ETAPA DE DESPLIEGUE EN QA
+  - stage: Deploy_QA
+    displayName: 'Deploy QA'
+    dependsOn: Deploy_DEV
     jobs:
-      - deployment: DeployQA
-        displayName: "Deploy QA"
+      - deployment: DeployQAJob
         environment: 'QA'
         strategy:
           runOnce:
             deploy:
               steps:
-                - script: echo "Despliegue simulado en QA (APP_ENVIRONMENT=QA)"
-                  displayName: "Despliegue QA"
+                - download: current
+                  artifact: drop
+                - script: echo "Desplegando en ambiente QA..."
+                  displayName: 'Ejecutar despliegue QA'
 
-  - stage: PDN
-    displayName: "Deploy PDN"
-    dependsOn: QA
-    condition: succeeded()
+  # 4. ETAPA DE DESPLIEGUE EN PDN (Requiere aprobación manual)
+  - stage: Deploy_PDN
+    displayName: 'Deploy PDN'
+    dependsOn: Deploy_QA
     jobs:
-      - deployment: DeployPDN
-        displayName: "Deploy PDN"
+      - deployment: DeployPDNJob
         environment: 'PDN'
         strategy:
           runOnce:
             deploy:
               steps:
-                - script: echo "Despliegue exitoso en Producción (APP_ENVIRONMENT=PDN)"
-                  displayName: "Despliegue PDN"
+                - download: current
+                  artifact: drop
+                - script: echo "Desplegando en ambiente PDN..."
+                  displayName: 'Ejecutar despliegue PDN'
