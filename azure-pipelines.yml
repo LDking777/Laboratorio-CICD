@@ -5,34 +5,38 @@ pool:
   vmImage: 'ubuntu-latest'
 
 stages:
-  # 1. ETAPA DE CONSTRUCCIÓN (CI)
+  # 1. ETAPA DE CONSTRUCCIÓN Y PRUEBAS (CI)
   - stage: Build
     displayName: 'Build'
     jobs:
       - job: BuildJob
+        displayName: 'Instalar y Probar Node.js'
         steps:
           - task: NodeTool@0
             inputs:
               versionSpec: '18.x'
-            displayName: 'Instalar Node.js'
+            displayName: 'Instalar Node.js 18'
 
-          - script: |
-              npm install
-              npm run build
-            displayName: 'Compilar React / Vite'
+          - script: npm ci
+            displayName: 'Instalar dependencias'
+
+          - script: npm test
+            displayName: 'Ejecutar pruebas unitarias (Jest)'
 
           - task: PublishPipelineArtifact@1
             inputs:
-              targetPath: '$(System.DefaultWorkingDirectory)/dist'
+              targetPath: '$(System.DefaultWorkingDirectory)'
               artifact: 'drop'
-            displayName: 'Publicar Artefacto'
+            displayName: 'Publicar Artefacto de la App'
 
   # 2. ETAPA DE DESPLIEGUE EN DEV
-  - stage: Deploy_DEV
-    displayName: 'Deploy DEV'
+  - stage: DEV
+    displayName: 'DEV'
     dependsOn: Build
+    condition: succeeded()
     jobs:
       - deployment: DeployDEVJob
+        displayName: 'Despliegue a DEV'
         environment: 'DEV'
         strategy:
           runOnce:
@@ -40,15 +44,17 @@ stages:
               steps:
                 - download: current
                   artifact: drop
-                - script: echo "Desplegando en ambiente DEV..."
+                - script: echo "Desplegando Tiendita en ambiente DEV..."
                   displayName: 'Ejecutar despliegue DEV'
 
   # 3. ETAPA DE DESPLIEGUE EN QA
-  - stage: Deploy_QA
-    displayName: 'Deploy QA'
-    dependsOn: Deploy_DEV
+  - stage: QA
+    displayName: 'QA'
+    dependsOn: DEV
+    condition: succeeded()
     jobs:
       - deployment: DeployQAJob
+        displayName: 'Despliegue a QA'
         environment: 'QA'
         strategy:
           runOnce:
@@ -56,21 +62,23 @@ stages:
               steps:
                 - download: current
                   artifact: drop
-                - script: echo "Desplegando en ambiente QA..."
+                - script: echo "Desplegando Tiendita en ambiente QA..."
                   displayName: 'Ejecutar despliegue QA'
 
-  # 4. ETAPA DE DESPLIEGUE EN PDN (Requiere aprobación manual)
-  - stage: Deploy_PDN
-    displayName: 'Deploy PDN'
-    dependsOn: Deploy_QA
+  # 4. ETAPA DE DESPLIEGUE EN PDN (Requiere aprobación manual de tu compañera)
+  - stage: PDN
+    displayName: 'PDN'
+    dependsOn: QA
+    condition: succeeded()
     jobs:
       - deployment: DeployPDNJob
-        environment: 'PDN'
+        displayName: 'Despliegue a PDN'
+        environment: 'PDN' # Vincula la verificación de seguridad de QA en Azure DevOps
         strategy:
           runOnce:
             deploy:
               steps:
                 - download: current
                   artifact: drop
-                - script: echo "Desplegando en ambiente PDN..."
+                - script: echo "Desplegando Tiendita en ambiente PDN..."
                   displayName: 'Ejecutar despliegue PDN'
